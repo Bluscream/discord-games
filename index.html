@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>boop</title>
+  <style>
+    code { color: #e83e8c; }
+    #games > div { padding: 5px; }
+  </style>
+</head>
+<body>
+  <input id="search" type="text" style="display: none"></input>
+  <div id="games"></div>
+  <script>
+(async () => {
+  const searchElement = document.querySelector("#search");
+  const gamesContainer = document.querySelector("#games");
+  let data = null;
+  try {
+    data = await (await fetch("https://discord.com/api/v9/applications/detectable")).json();
+  }
+  catch(e) {
+    alert(e);
+    console.error(e);
+    return;
+  }
+  for(const game of data) {
+    const gameElement = document.createElement("div");
+    const executables = [];
+    if(typeof game.executables === "undefined") {
+      continue
+    }
+    for(const executable of game.executables) {
+      if(executable.os === "win32") {
+        executables.push("<code>" + executable.name + "</code>");
+      }
+    }
+    if(executables.length == 0) {
+      continue
+    }
+    gameElement.innerHTML = "<b>" + game.name + "</b> " + executables.join(", ");
+    gamesContainer.append(gameElement);
+  }
+})();
+  </script>
+</body></html>
