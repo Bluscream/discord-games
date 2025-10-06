@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Discord Detectable Games Schema",
+  "description": "Schema for Discord's detectable games configuration file",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "aliases": {
+        "type": "array",
+        "description": "Alternative names for the game",
+        "items": {
+          "type": "string"
+        }
+      },
+      "executables": {
+        "type": "array",
+        "description": "List of executable files for the game",
+        "items": {
+          "type": "object",
+          "properties": {
+            "is_launcher": {
+              "type": "boolean",
+              "description": "Whether this executable is a launcher"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name of the executable file"
+            },
+            "os": {
+              "type": "string",
+              "description": "Operating system this executable is for",
+              "enum": ["win32", "darwin", "linux"]
+            }
+          },
+          "required": ["is_launcher", "name", "os"],
+          "additionalProperties": false
+        }
+      },
+      "hook": {
+        "type": "boolean",
+        "description": "Whether the game supports Discord hooks"
+      },
+      "icon_hash": {
+        "type": "string",
+        "description": "Hash of the game's icon. Full url would be https://cdn.discordapp.com/app-icons/<id>/<hash>.png",
+        "pattern": "^[a-f0-9]{32}$"
+      },
+      "id": {
+        "type": "string",
+        "description": "Unique identifier for the game",
+        "pattern": "^[0-9]+$"
+      },
+      "name": {
+        "type": "string",
+        "description": "Display name of the game"
+      },
+      "overlay": {
+        "type": "boolean",
+        "description": "Whether the game supports Discord overlay"
+      },
+      "overlay_compatibility_hook": {
+        "type": "boolean",
+        "description": "Whether overlay compatibility hook is enabled"
+      },
+      "overlay_methods": {
+        "type": ["array", "null"],
+        "description": "Methods used for overlay functionality",
+        "items": {
+          "type": "string"
+        }
+      },
+      "overlay_warn": {
+        "type": "boolean",
+        "description": "Whether to show overlay warnings"
+      },
+      "themes": {
+        "type": "array",
+        "description": "Game themes/categories",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "aliases",
+      "executables",
+      "hook",
+      "icon_hash",
+      "id",
+      "name",
+      "overlay",
+      "overlay_compatibility_hook",
+      "overlay_methods",
+      "overlay_warn",
+      "themes"
+    ],
+    "additionalProperties": false
+  }
+}
