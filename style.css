@@ -1,0 +1,64 @@
+.loading-spinner {
+  display: none;
+}
+
+/* Make the results table take full page height */
+#resultsCard {
+  height: calc(100vh - 106px);
+  /* Full height minus navbar and extra spacing */
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  margin-top: -1px; /* Remove gap between navbar and table */
+}
+
+.table-responsive {
+  height: 100%;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+
+/* Remove all borders and spacing */
+.table {
+  margin: 0;
+  border: none;
+}
+
+.table th,
+.table td {
+  border: none;
+  padding: 8px 12px;
+}
+
+.table thead th {
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* Remove container padding */
+.container-fluid {
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.executable-badge {
+  font-size: 0.8em;
+}
+
+.theme-badge {
+  font-size: 0.75em;
+}
+
+/* Fix dropdown z-index issues */
+.navbar .dropdown-menu {
+  z-index: 1050;
+}
+
+/* Ensure table headers don't interfere with dropdowns */
+.table thead th {
+  z-index: 1;
+}
