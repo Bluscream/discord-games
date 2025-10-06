@@ -13,7 +13,19 @@
     }
 
     .table-container {
-      max-height: 70vh;
+      height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    /* Make the results card take full height */
+    .results-card {
+      height: calc(100vh - 120px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-responsive {
+      flex: 1;
       overflow-y: auto;
     }
 
@@ -122,13 +134,13 @@
 
 
         <!-- Results Table -->
-        <div class="card" id="resultsCard" style="display: none;">
+        <div class="card results-card" id="resultsCard" style="display: none;">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Games (<span id="gameCount">0</span>)</h5>
             <small class="text-muted">All platforms supported</small>
           </div>
           <div class="card-body p-0">
-            <div class="table-container">
+            <div class="table-responsive">
               <table class="table table-hover mb-0" id="gamesTable">
                 <thead class="table-dark sticky-top">
                   <tr>
@@ -233,6 +245,7 @@
       item.addEventListener('click', function (e) {
         e.preventDefault();
         const proxy = this.getAttribute('data-proxy');
+        console.log('🔄 Proxy selection changed to:', proxy);
 
         if (proxy === 'custom') {
           const customUrl = prompt('Enter custom proxy URL ({url} will be replaced)\n\nExample: https://myproxy.com/fetch?url={url}');
@@ -334,15 +347,28 @@
       }
     }
 
+
+
     // Load games function
     async function loadGames() {
+      console.log('🎮 Starting loadGames function');
+      console.log('📡 Selected proxy:', selectedProxy);
+      console.log('🌐 Discord API URL:', discordApiUrl);
+
       let proxyUrl = selectedProxy;
 
       // Show loading state
+      console.log('⏳ Showing loading state');
       loadingSpinner.style.display = 'block';
       resultsCard.style.display = 'none';
       errorAlert.style.display = 'none';
       loadGamesBtn.disabled = true;
+
+      // Update loading text to show we're fetching
+      const loadingText = loadingSpinner.querySelector('.loading-text');
+      if (loadingText) {
+        loadingText.textContent = 'Fetching games from Discord API...';
+      }
 
       try {
         let fetchUrl;
@@ -350,31 +376,57 @@
         if (proxyUrl === 'direct') {
           // Direct request without proxy
           fetchUrl = discordApiUrl;
+          console.log('🌐 Using direct connection to:', fetchUrl);
         } else if (proxyUrl.includes('{url}')) {
           // Proxy format: replace {url} with encoded Discord API URL
           fetchUrl = proxyUrl.replace('{url}', encodeURIComponent(discordApiUrl));
+          console.log('🔄 Using proxy:', proxyUrl);
+          console.log('🔗 Final URL:', fetchUrl);
         } else {
           // Fallback for old format (should not happen with new system)
           fetchUrl = proxyUrl + discordApiUrl;
+          console.log('⚠️ Using fallback URL construction:', fetchUrl);
         }
 
+        console.log('📡 Making fetch request to:', fetchUrl);
         const response = await fetch(fetchUrl);
+        console.log('📊 Response status:', response.status, response.statusText);
+        console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()));
+
         if (!response.ok) {
+          console.error('❌ Response not OK:', response.status, response.statusText);
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
+        // Parse JSON response
+        console.log('📦 Parsing JSON response');
         gamesData = await response.json();
+        console.log('📊 Parsed games data:', gamesData.length, 'games');
 
-        filteredData = [...gamesData];
-        populateFilters();
-        renderTable();
+        // Update loading text with game count right after parsing
+        const loadingText = loadingSpinner.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = `Processing ${gamesData.length} games...`;
+        }
+
+        // Use setTimeout to break up the work and keep UI responsive
+        setTimeout(() => {
+          console.log('🔄 Starting async processing');
+          filteredData = [...gamesData];
+          populateFilters();
+
+          // Render table in chunks to prevent UI blocking
+          renderTableAsync();
+        }, 0);
 
         resultsCard.style.display = 'block';
 
       } catch (error) {
-        console.error('Error loading games:', error);
+        console.error('❌ Error loading games:', error);
+        console.error('❌ Error stack:', error.stack);
         showError(`Failed to load games: ${error.message}`);
       } finally {
+        console.log('🏁 Load games function completed');
         loadingSpinner.style.display = 'none';
         loadGamesBtn.disabled = false;
       }
@@ -538,24 +590,18 @@
 
         // Hook column
         const hookCell = document.createElement('td');
-        const hookBadge = document.createElement('span');
-        hookBadge.className = game.hook ? 'badge bg-success' : 'badge bg-secondary';
-        hookBadge.textContent = game.hook ? 'Yes' : 'No';
-        hookCell.appendChild(hookBadge);
+        hookCell.textContent = game.hook ? '✅' : '❌';
+        hookCell.className = 'text-center';
 
         // Overlay column
         const overlayCell = document.createElement('td');
-        const overlayBadge = document.createElement('span');
-        overlayBadge.className = game.overlay ? 'badge bg-success' : 'badge bg-secondary';
-        overlayBadge.textContent = game.overlay ? 'Yes' : 'No';
-        overlayCell.appendChild(overlayBadge);
+        overlayCell.textContent = game.overlay ? '✅' : '❌';
+        overlayCell.className = 'text-center';
 
         // Overlay Hook column
         const overlayHookCell = document.createElement('td');
-        const overlayHookBadge = document.createElement('span');
-        overlayHookBadge.className = game.overlay_compatibility_hook ? 'badge bg-success' : 'badge bg-secondary';
-        overlayHookBadge.textContent = game.overlay_compatibility_hook ? 'Yes' : 'No';
-        overlayHookCell.appendChild(overlayHookBadge);
+        overlayHookCell.textContent = game.overlay_compatibility_hook ? '✅' : '❌';
+        overlayHookCell.className = 'text-center';
 
         // Overlay Methods column
         const overlayMethodsCell = document.createElement('td');
@@ -573,10 +619,8 @@
 
         // Overlay Warn column
         const overlayWarnCell = document.createElement('td');
-        const overlayWarnBadge = document.createElement('span');
-        overlayWarnBadge.className = game.overlay_warn ? 'badge bg-warning' : 'badge bg-secondary';
-        overlayWarnBadge.textContent = game.overlay_warn ? 'Yes' : 'No';
-        overlayWarnCell.appendChild(overlayWarnBadge);
+        overlayWarnCell.textContent = game.overlay_warn ? '✅' : '❌';
+        overlayWarnCell.className = 'text-center';
 
         // Icon Hash column
         const iconHashCell = document.createElement('td');
@@ -608,9 +652,210 @@
       gameCount.textContent = filteredData.length;
     }
 
+    // Render table asynchronously in chunks to prevent UI blocking
+    function renderTableAsync() {
+      console.log('🎨 Starting async table rendering with', filteredData.length, 'games');
+      gamesTableBody.innerHTML = '';
+
+      const chunkSize = 50; // Process 50 games at a time
+      let currentIndex = 0;
+
+      function processChunk() {
+        const endIndex = Math.min(currentIndex + chunkSize, filteredData.length);
+        console.log(`📊 Processing games ${currentIndex + 1}-${endIndex} of ${filteredData.length}`);
+
+        // Update loading text with progress
+        const loadingText = loadingSpinner.querySelector('.loading-text');
+        if (loadingText) {
+          loadingText.textContent = `Processing ${currentIndex + 1}-${endIndex} of ${filteredData.length} games...`;
+        }
+
+        for (let i = currentIndex; i < endIndex; i++) {
+          const game = filteredData[i];
+          const row = document.createElement('tr');
+
+          // Get all executables
+          const allExecutables = game.executables || [];
+
+          // Icon column
+          const iconCell = document.createElement('td');
+          iconCell.className = 'text-center';
+          if (game.icon_hash) {
+            const iconImg = document.createElement('img');
+            iconImg.src = `https://cdn.discordapp.com/app-icons/${game.id}/${game.icon_hash}.png`;
+            iconImg.alt = `${game.name} icon`;
+            iconImg.className = 'rounded';
+            iconImg.style.width = '32px';
+            iconImg.style.height = '32px';
+            iconImg.style.objectFit = 'cover';
+            iconImg.onerror = function () {
+              this.style.display = 'none';
+              const fallback = document.createElement('span');
+              fallback.className = 'text-muted';
+              fallback.textContent = '📱';
+              fallback.style.fontSize = '24px';
+              iconCell.appendChild(fallback);
+            };
+            iconCell.appendChild(iconImg);
+          } else {
+            const fallback = document.createElement('span');
+            fallback.className = 'text-muted';
+            fallback.textContent = '📱';
+            fallback.style.fontSize = '24px';
+            iconCell.appendChild(fallback);
+          }
+
+          // Name column
+          const nameCell = document.createElement('td');
+          const nameStrong = document.createElement('strong');
+          nameStrong.textContent = game.name;
+          nameCell.appendChild(nameStrong);
+
+          // Aliases column
+          const aliasesCell = document.createElement('td');
+          if (game.aliases && game.aliases.length > 0) {
+            aliasesCell.textContent = game.aliases.join(', ');
+          } else {
+            aliasesCell.textContent = '-';
+            aliasesCell.className = 'text-muted';
+          }
+
+          // ID column
+          const idCell = document.createElement('td');
+          idCell.textContent = game.id;
+          idCell.className = 'font-monospace small';
+
+          // Executables column
+          const executablesCell = document.createElement('td');
+          if (allExecutables.length > 0) {
+            allExecutables.forEach(exec => {
+              const badge = document.createElement('span');
+              badge.className = 'badge executable-badge me-1';
+
+              // Set badge color based on OS
+              const osColors = {
+                'win32': 'bg-primary',
+                'darwin': 'bg-success',
+                'linux': 'bg-info'
+              };
+              badge.className += ' ' + (osColors[exec.os] || 'bg-secondary');
+
+              // Add OS indicator
+              const osNames = { 'win32': 'W', 'darwin': 'M', 'linux': 'L' };
+              badge.textContent = `${exec.name} (${osNames[exec.os] || exec.os})`;
+
+              if (exec.is_launcher) {
+                badge.className += ' border border-warning';
+                badge.title = 'Launcher';
+              }
+              executablesCell.appendChild(badge);
+            });
+          } else {
+            executablesCell.textContent = '-';
+            executablesCell.className = 'text-muted';
+          }
+
+          // Themes column
+          const themesCell = document.createElement('td');
+          if (game.themes && game.themes.length > 0) {
+            game.themes.forEach(theme => {
+              const badge = document.createElement('span');
+              badge.className = 'badge bg-secondary theme-badge me-1';
+              badge.textContent = theme;
+              themesCell.appendChild(badge);
+            });
+          } else {
+            themesCell.textContent = '-';
+            themesCell.className = 'text-muted';
+          }
+
+          // Hook column
+          const hookCell = document.createElement('td');
+          hookCell.textContent = game.hook ? '✅' : '❌';
+          hookCell.className = 'text-center';
+
+          // Overlay column
+          const overlayCell = document.createElement('td');
+          overlayCell.textContent = game.overlay ? '✅' : '❌';
+          overlayCell.className = 'text-center';
+
+          // Overlay Hook column
+          const overlayHookCell = document.createElement('td');
+          overlayHookCell.textContent = game.overlay_compatibility_hook ? '✅' : '❌';
+          overlayHookCell.className = 'text-center';
+
+          // Overlay Methods column
+          const overlayMethodsCell = document.createElement('td');
+          if (game.overlay_methods && game.overlay_methods.length > 0) {
+            game.overlay_methods.forEach(method => {
+              const badge = document.createElement('span');
+              badge.className = 'badge bg-info me-1';
+              badge.textContent = method;
+              overlayMethodsCell.appendChild(badge);
+            });
+          } else {
+            overlayMethodsCell.textContent = '-';
+            overlayMethodsCell.className = 'text-muted';
+          }
+
+          // Overlay Warn column
+          const overlayWarnCell = document.createElement('td');
+          overlayWarnCell.textContent = game.overlay_warn ? '✅' : '❌';
+          overlayWarnCell.className = 'text-center';
+
+          // Icon Hash column
+          const iconHashCell = document.createElement('td');
+          if (game.icon_hash) {
+            iconHashCell.textContent = game.icon_hash;
+            iconHashCell.className = 'font-monospace small';
+          } else {
+            iconHashCell.textContent = '-';
+            iconHashCell.className = 'text-muted';
+          }
+
+          // Append all cells to row
+          row.appendChild(iconCell);
+          row.appendChild(nameCell);
+          row.appendChild(aliasesCell);
+          row.appendChild(idCell);
+          row.appendChild(executablesCell);
+          row.appendChild(themesCell);
+          row.appendChild(hookCell);
+          row.appendChild(overlayCell);
+          row.appendChild(overlayHookCell);
+          row.appendChild(overlayMethodsCell);
+          row.appendChild(overlayWarnCell);
+          row.appendChild(iconHashCell);
+
+          gamesTableBody.appendChild(row);
+        }
+
+        currentIndex = endIndex;
+
+        if (currentIndex < filteredData.length) {
+          // Continue processing next chunk
+          setTimeout(processChunk, 0);
+        } else {
+          // Finished processing all games
+          console.log('✅ Async table rendering completed');
+          document.getElementById('gameCount').textContent = filteredData.length;
+
+          // Hide loading spinner
+          loadingSpinner.style.display = 'none';
+        }
+      }
+
+      // Start processing
+      processChunk();
+    }
+
     // Filter and sort functions
     function applyFilters() {
+      console.log('🔍 Applying filters');
       const searchTerm = searchInput.value.toLowerCase();
+      console.log('🔎 Search term:', searchTerm);
+      console.log('🎨 Current theme filter:', currentTheme);
+      console.log('💻 Current OS filter:', currentOS);
 
       filteredData = gamesData.filter(game => {
         // Search filter
@@ -636,7 +881,10 @@
         return matchesSearch && matchesTheme && matchesOS;
       });
 
+      console.log('📊 Filtered results:', filteredData.length, 'out of', gamesData.length, 'games');
+
       // Apply sorting
+      console.log('🔄 Applying sort:', currentSort);
       filteredData.sort((a, b) => {
         switch (currentSort) {
           case 'name':
@@ -664,6 +912,7 @@
         }
       });
 
+      console.log('🎯 Rendering filtered table with', filteredData.length, 'games');
       renderTable();
     }
 
@@ -679,7 +928,10 @@
     searchInput.addEventListener('input', applyFilters);
 
     // Initialize proxy menu and URL parameters
+    console.log('🚀 Initializing application');
+    console.log('📋 Populating proxy menu');
     populateProxyMenu();
+    console.log('🔗 Loading proxy from URL parameters');
     loadProxyFromUrl();
 
     // Re-attach event listeners after populating menu
